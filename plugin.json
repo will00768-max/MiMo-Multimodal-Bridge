@@ -1,13 +1,14 @@
 {
   "name": "mimo-multimodal-bridge",
   "version": "1.0.0",
-  "description": "MiMo 多模态桥接插件 - 让不支持多模态的模型能够理解图片、音频、视频内容",
+  "description": "MiMo Multimodal Bridge - Enable text-only models to understand images, audio & video. Compatible with MiMo Code and OpenCode.",
   "author": "MiMo Community",
   "license": "MIT",
   "main": "index.ts",
   "keywords": [
     "mimo",
     "mimocode",
+    "opencode",
     "plugin",
     "multimodal",
     "vision",
@@ -17,6 +18,9 @@
     "video"
   ],
   "mimocode": {
+    "minVersion": "0.1.0"
+  },
+  "opencode": {
     "minVersion": "0.1.0"
   }
 }

@@ -8,6 +8,8 @@
 
 MiMo 多模态桥接插件 - 让不支持多模态的模型（如 mimo-v2.5-pro）能够理解图片、音频、视频内容。
 
+**兼容平台**: MiMo Code / OpenCode
+
 ### 功能特性
 
 - 🖼️ **图片理解** - 代码截图、图表、错误信息
@@ -43,6 +45,8 @@ irm https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/
    ```
 
 2. **复制到插件目录**：
+   
+   **MiMo Code 用户**：
    ```bash
    # Linux/Mac
    mkdir -p ~/.config/mimocode/plugins/mimo-multimodal-bridge
@@ -53,9 +57,23 @@ irm https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/
    copy index.ts plugin.json %APPDATA%\mimocode\plugins\mimo-multimodal-bridge\
    ```
 
+   **OpenCode 用户**：
+   ```bash
+   # Linux/Mac
+   mkdir -p ~/.config/opencode/plugins/mimo-multimodal-bridge
+   cp index.ts plugin.json ~/.config/opencode/plugins/mimo-multimodal-bridge/
+
+   # Windows
+   mkdir %APPDATA%\opencode\plugins\mimo-multimodal-bridge
+   copy index.ts plugin.json %APPDATA%\opencode\plugins\mimo-multimodal-bridge\
+   ```
+
 3. **添加配置**：
    
-   编辑 `~/.config/mimocode/mimocode.json`（或对应的全局配置文件）：
+   编辑配置文件：
+   - MiMo Code: `~/.config/mimocode/mimocode.json`
+   - OpenCode: `~/.config/opencode/opencode.json`
+   
    ```json
    {
      "plugin": [
@@ -64,7 +82,7 @@ irm https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/
    }
    ```
 
-4. **重启 MiMo Code**
+4. **重启 MiMo Code / OpenCode**
 
 详细安装说明请参考 [INSTALL-GLOBAL.md](./INSTALL-GLOBAL.md)
 
@@ -113,6 +131,7 @@ def calculate(a, b):
 - ✅ 不修改核心代码
 - ✅ 官方升级无影响
 - ✅ 插件接口向后兼容
+- ✅ 同时支持 MiMo Code 和 OpenCode
 
 ### 已知限制
 
@@ -136,6 +155,8 @@ MIT
 ## English
 
 MiMo Multimodal Bridge Plugin - Enable text-only models (like mimo-v2.5-pro) to understand images, audio, and video content.
+
+**Compatible with**: MiMo Code / OpenCode
 
 ### Features
 
