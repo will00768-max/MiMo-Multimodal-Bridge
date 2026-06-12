@@ -36,11 +36,34 @@ function getMediaType(mime: string) {
 let hasMultimodalContent = false
 let multimodalFiles: string[] = []
 
+// 检测当前平台和 provider ID
+function detectProviderAndModel(client: any): { providerID: string; modelID: string } {
+  // MiMo Code 和 OpenCode 使用不同的 provider ID
+  // MiMo Code: "mimo" 或 "xiaomi"
+  // OpenCode: "opencode"
+  
+  // 通过检查环境变量或配置来判断平台
+  // 默认尝试 MiMo，如果失败则尝试 OpenCode
+  return {
+    providerID: "mimo",
+    modelID: "mimo-v2.5",
+  }
+}
+
+// 备用配置：如果 MiMo 失败，尝试 OpenCode
+const FALLBACK_CONFIG = {
+  providerID: "opencode",
+  modelID: "mimo-v2.5",
+}
+
 /**
  * 插件主函数
  */
 const server: Plugin = async (input) => {
   const { client } = input
+  
+  // 检测平台
+  const modelConfig = detectProviderAndModel(client)
 
   const hooks: Hooks = {
     /**
@@ -100,27 +123,49 @@ const server: Plugin = async (input) => {
             const session = await client.session.create({})
             const sessionId = session.id
 
-            const response = await client.session.prompt({
-              path: { id: sessionId },
-              body: {
-                parts: [
-                  {
-                    type: "file",
-                    mime: mime,
-                    url: url,
-                    filename: filename,
-                  },
-                  {
-                    type: "text",
-                    text: prompt,
-                  },
-                ],
-                model: {
-                  providerID: "mimo",
-                  modelID: "mimo-v2.5",
+            // 尝试调用模型，如果失败则使用备用配置
+            let response
+            try {
+              response = await client.session.prompt({
+                path: { id: sessionId },
+                body: {
+                  parts: [
+                    {
+                      type: "file",
+                      mime: mime,
+                      url: url,
+                      filename: filename,
+                    },
+                    {
+                      type: "text",
+                      text: prompt,
+                    },
+                  ],
+                  model: modelConfig,
                 },
-              },
-            })
+              })
+            } catch (firstError) {
+              // 如果第一次尝试失败，使用备用配置
+              console.log(`[MiMo-Multimodal-Bridge] 第一次调用失败，尝试备用配置...`)
+              response = await client.session.prompt({
+                path: { id: sessionId },
+                body: {
+                  parts: [
+                    {
+                      type: "file",
+                      mime: mime,
+                      url: url,
+                      filename: filename,
+                    },
+                    {
+                      type: "text",
+                      text: prompt,
+                    },
+                  ],
+                  model: FALLBACK_CONFIG,
+                },
+              })
+            }
 
             const textParts = response.parts.filter((p: any) => p.type === "text")
             const description = textParts.map((p: any) => p.text).join("\n")
@@ -130,7 +175,7 @@ const server: Plugin = async (input) => {
               metadata: {
                 mediaType: mediaType.modality,
                 filename: filename,
-                model: "mimo-v2.5",
+                model: modelConfig.modelID,
               },
             }
           } catch (error) {
