@@ -26,24 +26,9 @@ case "$choice" in
         ;;
 esac
 
-# 检测操作系统
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    if [ "$platform" = "opencode" ]; then
-        CONFIG_DIR="$HOME/Library/Application Support/opencode"
-    else
-        CONFIG_DIR="$HOME/Library/Application Support/mimocode"
-    fi
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    if [ "$platform" = "opencode" ]; then
-        CONFIG_DIR="$HOME/.config/opencode"
-    else
-        CONFIG_DIR="$HOME/.config/mimocode"
-    fi
-else
-    echo "不支持的操作系统，请手动安装"
-    echo "参考: INSTALL-GLOBAL.md"
-    exit 1
-fi
+# MiMo Code 和 OpenCode 使用 XDG 标准路径
+# Linux/macOS: ~/.config/{platform}
+CONFIG_DIR="$HOME/.config/$platform"
 
 PLUGIN_DIR="$CONFIG_DIR/plugins/mimo-multimodal-bridge"
 SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"

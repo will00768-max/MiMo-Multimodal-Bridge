@@ -24,8 +24,8 @@ switch ($choice) {
     }
 }
 
-# 配置目录
-$configDir = "$env:APPDATA\$platform"
+# 配置目录 - MiMo Code 和 OpenCode 在 Windows 上使用 .config 目录
+$configDir = "$env:USERPROFILE\.config\$platform"
 $pluginDir = "$configDir\plugins\mimo-multimodal-bridge"
 
 Write-Host ""
