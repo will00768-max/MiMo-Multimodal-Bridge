@@ -172,6 +172,7 @@ const server: Plugin = async (input) => {
             log("INFO", "session 创建成功", { sessionId })
 
             // 调用多模态模型
+            log("INFO", "调用 session.prompt API", { sessionId, modelConfig })
             const response = await client.session.prompt({
               path: { id: sessionId },
               body: {
@@ -194,10 +195,35 @@ const server: Plugin = async (input) => {
               },
             })
 
-            log("INFO", "模型调用成功")
+            log("INFO", "API 返回结果", { 
+              responseType: typeof response,
+              responseKeys: response ? Object.keys(response) : null,
+              response: JSON.stringify(response).substring(0, 500)
+            })
 
-            const textParts = response.parts.filter((p: any) => p.type === "text")
-            const description = textParts.map((p: any) => p.text).join("\n")
+            // 检查 response 结构
+            if (!response) {
+              log("ERROR", "API 返回空结果")
+              return {
+                output: "API 返回空结果",
+                metadata: { error: "empty_response" },
+              }
+            }
+
+            // 尝试不同的响应格式
+            let description = ""
+            if (response.parts) {
+              const textParts = response.parts.filter((p: any) => p.type === "text")
+              description = textParts.map((p: any) => p.text).join("\n")
+            } else if (response.info?.parts) {
+              const textParts = response.info.parts.filter((p: any) => p.type === "text")
+              description = textParts.map((p: any) => p.text).join("\n")
+            } else if (typeof response === "string") {
+              description = response
+            } else {
+              log("ERROR", "无法解析响应格式", { response })
+              description = JSON.stringify(response)
+            }
 
             log("INFO", "描述生成成功", { descriptionLength: description.length })
 
