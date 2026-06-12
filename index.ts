@@ -57,17 +57,29 @@ function getMediaType(mime: string) {
 }
 
 // 将文件转换为 data URL
-function fileToDataUrl(filePath: string, mime: string): string | null {
+function fileToDataUrl(fileUrl: string, mime: string): string | null {
   try {
+    // 处理 file:// URL，提取本地路径
+    let filePath = fileUrl
+    if (filePath.startsWith("file://")) {
+      // 移除 file:// 前缀，处理 Windows 路径
+      filePath = filePath.replace("file://", "").replace(/\//g, "\\")
+      // 处理 URL 编码的字符
+      filePath = decodeURIComponent(filePath)
+    }
+    
+    log("INFO", "读取文件", { filePath })
+    
     if (!existsSync(filePath)) {
-      console.error(`[MiMo-Multimodal-Bridge] 文件不存在: ${filePath}`)
+      log("ERROR", "文件不存在", { filePath })
       return null
     }
     const buffer = readFileSync(filePath)
     const base64 = buffer.toString("base64")
+    log("INFO", "文件读取成功", { size: buffer.length })
     return `data:${mime};base64,${base64}`
   } catch (error) {
-    console.error(`[MiMo-Multimodal-Bridge] 读取文件失败: ${error}`)
+    log("ERROR", "读取文件失败", { error: String(error) })
     return null
   }
 }
