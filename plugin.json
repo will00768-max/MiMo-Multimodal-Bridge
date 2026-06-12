@@ -1,0 +1,22 @@
+{
+  "name": "mimo-multimodal-bridge",
+  "version": "1.0.0",
+  "description": "MiMo 多模态桥接插件 - 让不支持多模态的模型能够理解图片、音频、视频内容",
+  "author": "MiMo Community",
+  "license": "MIT",
+  "main": "server.ts",
+  "keywords": [
+    "mimo",
+    "mimocode",
+    "plugin",
+    "multimodal",
+    "vision",
+    "bridge",
+    "image",
+    "audio",
+    "video"
+  ],
+  "mimocode": {
+    "minVersion": "0.1.0"
+  }
+}
