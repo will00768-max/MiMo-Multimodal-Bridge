@@ -6,13 +6,30 @@ Write-Host "  MiMo-Multimodal-Bridge 安装" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# 检测平台
-$platform = if ($env:APPDATA) { "mimocode" } else { "mimocode" }
+# 选择平台
+Write-Host "请选择安装平台:" -ForegroundColor Yellow
+Write-Host "  [1] MiMo Code (默认)" -ForegroundColor White
+Write-Host "  [2] OpenCode" -ForegroundColor White
+Write-Host ""
+$choice = Read-Host "请输入选项 (1/2，默认 1)"
+
+switch ($choice) {
+    "2" {
+        $platform = "opencode"
+        $configFileName = "opencode.json"
+    }
+    default {
+        $platform = "mimocode"
+        $configFileName = "mimocode.json"
+    }
+}
 
 # 配置目录
 $configDir = "$env:APPDATA\$platform"
 $pluginDir = "$configDir\plugins\mimo-multimodal-bridge"
 
+Write-Host ""
+Write-Host "目标平台: $platform" -ForegroundColor Green
 Write-Host "配置目录: $configDir" -ForegroundColor Yellow
 Write-Host "插件目录: $pluginDir" -ForegroundColor Yellow
 Write-Host ""
@@ -44,7 +61,7 @@ try {
 }
 
 # 检查配置文件
-$configFile = "$configDir\mimocode.json"
+$configFile = "$configDir\$configFileName"
 if (!(Test-Path $configFile)) {
     Write-Host "创建配置文件..." -ForegroundColor Green
     $configDir2 = Split-Path $configFile -Parent
@@ -54,7 +71,7 @@ if (!(Test-Path $configFile)) {
     @{
         plugin = @("$pluginDir\index.ts")
     } | ConvertTo-Json | Out-File $configFile -Encoding UTF8
-    Write-Host "  ✓ 配置文件已创建" -ForegroundColor Green
+    Write-Host "  ✓ 配置文件已创建: $configFile" -ForegroundColor Green
 } else {
     Write-Host ""
     Write-Host "配置文件已存在: $configFile" -ForegroundColor Yellow
@@ -75,7 +92,7 @@ Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "  安装完成！" -ForegroundColor Green
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "请重启 MiMo Code 以加载插件。" -ForegroundColor Yellow
+Write-Host "请重启 $platform 以加载插件。" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "使用方法:" -ForegroundColor Cyan
 Write-Host "  1. 发送图片/音频/视频给不支持多模态的模型" -ForegroundColor White
