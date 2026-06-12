@@ -187,9 +187,17 @@ const server: Plugin = async (input) => {
     "chat.message": async (input, output) => {
       const { parts } = output
 
+      console.log("[MiMo-Multimodal-Bridge] chat.message 触发，parts 数量:", parts.length)
+      
       // 检测多模态内容
       const mediaParts = parts.filter(
-        (part) => part.type === "file" && getMediaType((part as any).mime)
+        (part) => {
+          const isFile = part.type === "file"
+          const mime = (part as any).mime
+          const mediaType = mime ? getMediaType(mime) : null
+          console.log("[MiMo-Multimodal-Bridge] 检查 part:", { type: part.type, mime, isFile, mediaType })
+          return isFile && mediaType
+        }
       )
 
       // 存储当前会话的多模态文件信息
@@ -200,6 +208,8 @@ const server: Plugin = async (input) => {
         }
         return ""
       }).filter(Boolean)
+      
+      console.log("[MiMo-Multimodal-Bridge] 检测到多模态文件:", currentMultimodalFiles)
     },
 
     /**
