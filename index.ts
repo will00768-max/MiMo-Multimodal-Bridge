@@ -116,7 +116,7 @@ const server: Plugin = async (input) => {
                   },
                 ],
                 model: {
-                  providerID: "opencode",
+                  providerID: "mimo",
                   modelID: "mimo-v2.5",
                 },
               },
