@@ -32,18 +32,8 @@ function getMediaType(mime: string) {
   return null
 }
 
-// 检测消息中是否包含多模态内容
-let hasMultimodalContent = false
-let multimodalFiles: string[] = []
-
 // 检测当前平台和 provider ID
-function detectProviderAndModel(client: any): { providerID: string; modelID: string } {
-  // MiMo Code 和 OpenCode 使用不同的 provider ID
-  // MiMo Code: "mimo" 或 "xiaomi"
-  // OpenCode: "opencode"
-  
-  // 通过检查环境变量或配置来判断平台
-  // 默认尝试 MiMo，如果失败则尝试 OpenCode
+function detectProviderAndModel(): { providerID: string; modelID: string } {
   return {
     providerID: "mimo",
     modelID: "mimo-v2.5",
@@ -63,7 +53,10 @@ const server: Plugin = async (input) => {
   const { client } = input
   
   // 检测平台
-  const modelConfig = detectProviderAndModel(client)
+  const modelConfig = detectProviderAndModel()
+  
+  // 存储当前会话的多模态内容信息
+  let currentMultimodalFiles: string[] = []
 
   const hooks: Hooks = {
     /**
@@ -196,14 +189,14 @@ const server: Plugin = async (input) => {
 
       // 检测多模态内容
       const mediaParts = parts.filter(
-        (part) => part.type === "file" && getMediaType(part.mime)
+        (part) => part.type === "file" && getMediaType((part as any).mime)
       )
 
-      hasMultimodalContent = mediaParts.length > 0
-      multimodalFiles = mediaParts.map(p => {
+      // 存储当前会话的多模态文件信息
+      currentMultimodalFiles = mediaParts.map(p => {
         if (p.type === "file") {
-          const mediaType = getMediaType(p.mime)
-          return `${mediaType?.name || "未知"}: ${p.filename || p.mime}`
+          const mediaType = getMediaType((p as any).mime)
+          return `${mediaType?.name || "未知"}: ${(p as any).filename || (p as any).mime}`
         }
         return ""
       }).filter(Boolean)
@@ -211,17 +204,18 @@ const server: Plugin = async (input) => {
 
     /**
      * 在系统提示中添加多模态处理指导
+     * 使用 experimental.chat.system.transform 钩子
      */
     "experimental.chat.system.transform": async (input, output) => {
       // 只在有多模态内容时添加指导
-      if (!hasMultimodalContent || multimodalFiles.length === 0) {
+      if (currentMultimodalFiles.length === 0) {
         return
       }
 
       const multimodalInstruction = `
 ## 多模态内容处理
 
-检测到用户发送了多模态内容：${multimodalFiles.join("、")}
+检测到用户发送了多模态内容：${currentMultimodalFiles.join("、")}
 
 **重要**：你必须使用 \`understand_media\` 工具来理解这些多模态内容。
 不要告诉用户你不支持图片/音频/视频，而是调用工具来获取内容描述。
@@ -233,6 +227,9 @@ const server: Plugin = async (input) => {
 `
 
       output.system.push(multimodalInstruction)
+      
+      // 清除状态，避免影响后续消息
+      currentMultimodalFiles = []
     },
   }
 
