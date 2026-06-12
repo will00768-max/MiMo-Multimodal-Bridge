@@ -1,7 +1,8 @@
 import type { Plugin, Hooks } from "@mimo-ai/plugin"
 import { tool } from "@mimo-ai/plugin"
-import { readFileSync, existsSync } from "fs"
-import { pathToFileURL } from "url"
+import { readFileSync, existsSync, appendFileSync, mkdirSync } from "fs"
+import { join } from "path"
+import { homedir } from "os"
 
 /**
  * MiMo-Multimodal-Bridge
@@ -11,6 +12,27 @@ import { pathToFileURL } from "url"
  * 
  * GitHub: https://github.com/will00768-max/MiMo-Multimodal-Bridge
  */
+
+// 日志文件路径
+const LOG_DIR = join(homedir(), ".config", "mimocode", "plugins", "mimo-multimodal-bridge", "logs")
+const LOG_FILE = join(LOG_DIR, "plugin.log")
+
+// 确保日志目录存在
+try {
+  mkdirSync(LOG_DIR, { recursive: true })
+} catch {}
+
+// 写入日志
+function log(level: string, message: string, data?: any) {
+  const timestamp = new Date().toISOString()
+  const logEntry = data 
+    ? `[${timestamp}] [${level}] ${message} ${JSON.stringify(data, null, 2)}\n`
+    : `[${timestamp}] [${level}] ${message}\n`
+  
+  try {
+    appendFileSync(LOG_FILE, logEntry)
+  } catch {}
+}
 
 // 多模态 MIME 类型检测
 const MEDIA_TYPES: Record<string, { name: string; modality: string }> = {
@@ -87,7 +109,7 @@ const server: Plugin = async (input) => {
         async execute(args, context) {
           const { url, mime, filename, question } = args
 
-          console.log(`[MiMo-Multimodal-Bridge] understand_media 执行:`, { url, mime, filename })
+          log("INFO", "understand_media 开始执行", { url, mime, filename })
 
           const mediaType = getMediaType(mime)
           if (!mediaType) {
@@ -117,12 +139,13 @@ const server: Plugin = async (input) => {
             
             // 如果是本地文件路径，转换为 data URL
             if (!url.startsWith("data:") && !url.startsWith("http")) {
-              console.log(`[MiMo-Multimodal-Bridge] 本地文件路径，转换为 data URL: ${url}`)
+              log("INFO", "本地文件路径，转换为 data URL", { url })
               const dataUrl = fileToDataUrl(url, mime)
               if (dataUrl) {
                 fileUrl = dataUrl
-                console.log(`[MiMo-Multimodal-Bridge] 转换成功，data URL 长度: ${dataUrl.length}`)
+                log("INFO", "转换成功", { dataUrlLength: dataUrl.length })
               } else {
+                log("ERROR", "文件不存在或无法读取", { url })
                 return {
                   output: `无法读取文件: ${url}`,
                   metadata: { error: "file_not_found" },
@@ -131,10 +154,10 @@ const server: Plugin = async (input) => {
             }
 
             // 创建新 session 来调用多模态模型
-            console.log(`[MiMo-Multimodal-Bridge] 创建新 session 调用多模态模型...`)
+            log("INFO", "创建新 session 调用多模态模型")
             const session = await client.session.create({})
             const sessionId = session.id
-            console.log(`[MiMo-Multimodal-Bridge] session 创建成功: ${sessionId}`)
+            log("INFO", "session 创建成功", { sessionId })
 
             // 调用多模态模型
             const response = await client.session.prompt({
@@ -159,10 +182,12 @@ const server: Plugin = async (input) => {
               },
             })
 
-            console.log(`[MiMo-Multimodal-Bridge] 模型调用成功`)
+            log("INFO", "模型调用成功")
 
             const textParts = response.parts.filter((p: any) => p.type === "text")
             const description = textParts.map((p: any) => p.text).join("\n")
+
+            log("INFO", "描述生成成功", { descriptionLength: description.length })
 
             return {
               output: description || "无法理解该内容",
@@ -173,7 +198,7 @@ const server: Plugin = async (input) => {
               },
             }
           } catch (error) {
-            console.error(`[MiMo-Multimodal-Bridge] 执行失败:`, error)
+            log("ERROR", "执行失败", { error: String(error), stack: (error as any).stack })
             return {
               output: `处理${mediaType.name}时出错: ${error}`,
               metadata: { error: String(error) },
@@ -189,7 +214,7 @@ const server: Plugin = async (input) => {
     "chat.message": async (input, output) => {
       const { parts } = output
 
-      console.log("[MiMo-Multimodal-Bridge] chat.message 触发，parts 数量:", parts.length)
+      log("INFO", "chat.message 触发", { partsCount: parts.length })
       
       // 检测多模态内容
       const mediaParts = parts.filter(
@@ -198,13 +223,13 @@ const server: Plugin = async (input) => {
           const mime = (part as any).mime
           const mediaType = mime ? getMediaType(mime) : null
           if (isFile && mediaType) {
-            console.log("[MiMo-Multimodal-Bridge] 检测到多模态内容:", { type: part.type, mime, mediaType })
+            log("INFO", "检测到多模态内容", { type: part.type, mime, mediaType })
           }
           return isFile && mediaType
         }
       )
 
-      console.log("[MiMo-Multimodal-Bridge] 多模态文件数量:", mediaParts.length)
+      log("INFO", "多模态文件数量", { count: mediaParts.length })
     },
   }
 
