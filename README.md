@@ -19,10 +19,27 @@ MiMo 多模态桥接插件 - 让不支持多模态的模型（如 mimo-v2.5-pro�
 
 ### 工作原理
 
+```mermaid
+sequenceDiagram
+    participant U as 👤 用户
+    participant P as 🔌 MiMo Code
+    participant T as 🛠️ understand_media
+    participant V as 👁️ mimo-v2.5
+    participant R as 🧠 mimo-v2.5-pro
+
+    U->>P: 发送图片/音频/视频
+    P->>R: 转发消息
+    R-->>P: 不支持多模态输入
+    P->>T: 调用 understand_media 工具
+    T->>V: 发送多模态内容
+    V-->>T: 返回理解结果
+    T-->>P: 返回文本描述
+    P->>R: 注入描述 + 原始消息
+    R-->>P: 生成最终回复
+    P-->>U: 展示结果
 ```
-用户发送图片 → mimo-v2.5-pro 不支持 → 调用 understand_media 工具 
-→ 工具调用 mimo-v2.5 理解 → 返回结果 → mimo-v2.5-pro 继续处理
-```
+
+**核心机制**：通过插件系统的 `tool` 钩子，当主模型遇到不支持的多模态内容时，自动桥接到支持多模态的模型进行预处理，实现跨模型能力扩展。
 
 ### 安装
 
@@ -167,10 +184,27 @@ MiMo Multimodal Bridge Plugin - Enable text-only models (like mimo-v2.5-pro) to 
 
 ### How It Works
 
+```mermaid
+sequenceDiagram
+    participant U as 👤 User
+    participant P as 🔌 MiMo Code
+    participant T as 🛠️ understand_media
+    participant V as 👁️ mimo-v2.5
+    participant R as 🧠 mimo-v2.5-pro
+
+    U->>P: Send image/audio/video
+    P->>R: Forward message
+    R-->>P: Multimodal not supported
+    P->>T: Call understand_media tool
+    T->>V: Send multimodal content
+    V-->>T: Return understanding
+    T-->>P: Return text description
+    P->>R: Inject description + original
+    R-->>P: Generate final response
+    P-->>U: Display result
 ```
-User sends image → mimo-v2.5-pro doesn't support → Calls understand_media tool 
-→ Tool uses mimo-v2.5 to understand → Returns result → mimo-v2.5-pro continues
-```
+
+**Core Mechanism**: Leverages the plugin system's `tool` hook to automatically bridge to a multimodal-capable model for preprocessing when the primary model encounters unsupported content, enabling cross-model capability extension.
 
 ### Installation
 
