@@ -37,9 +37,9 @@ let hasMultimodalContent = false
 let multimodalFiles: string[] = []
 
 /**
- * 插件主入口
+ * 插件主函数
  */
-export const server: Plugin = async (input) => {
+const server: Plugin = async (input) => {
   const { client } = input
 
   const hooks: Hooks = {
@@ -194,4 +194,8 @@ export const server: Plugin = async (input) => {
   return hooks
 }
 
-export default server
+// 导出格式必须符合 MiMo Code 插件规范
+export default {
+  id: "mimo-multimodal-bridge",
+  server,
+}
