@@ -64,15 +64,15 @@ mkdir -p $env:APPDATA\mimocode\plugins\mimo-multimodal-bridge
 #### 步骤 3：复制插件文件
 
 将以下文件复制到插件目录：
-- `server.ts`
+- `index.ts`
 - `plugin.json`
 
 ```bash
 # Linux/Mac（假设你在插件源码目录）
-cp server.ts plugin.json ~/.config/mimocode/plugins/mimo-multimodal-bridge/
+cp index.ts plugin.json ~/.config/mimocode/plugins/mimo-multimodal-bridge/
 
 # Windows (PowerShell)
-Copy-Item server.ts, plugin.json $env:APPDATA\mimocode\plugins\mimo-multimodal-bridge\
+Copy-Item index.ts, plugin.json $env:APPDATA\mimocode\plugins\mimo-multimodal-bridge\
 ```
 
 #### 步骤 4：编辑配置文件
@@ -92,7 +92,7 @@ notepad %APPDATA%\mimocode\mimocode.json
 ```json
 {
   "plugin": [
-    "~/.config/mimocode/plugins/mimo-multimodal-bridge/server.ts"
+    "~/.config/mimocode/plugins/mimo-multimodal-bridge/index.ts"
   ]
 }
 ```
@@ -102,7 +102,7 @@ notepad %APPDATA%\mimocode\mimocode.json
 ```json
 {
   "plugin": [
-    "%APPDATA%\\mimocode\\plugins\\mimo-multimodal-bridge\\server.ts"
+    "%APPDATA%\\mimocode\\plugins\\mimo-multimodal-bridge\\index.ts"
   ]
 }
 ```
@@ -133,14 +133,14 @@ notepad %APPDATA%\mimocode\mimocode.json
 
 2. 复制插件文件：
    ```bash
-   cp server.ts plugin.json .mimocode/plugins/mimo-multimodal-bridge/
+   cp index.ts plugin.json .mimocode/plugins/mimo-multimodal-bridge/
    ```
 
 3. 在项目的 `.mimocode/mimocode.json` 中添加：
    ```json
    {
      "plugin": [
-       "./plugins/mimo-multimodal-bridge/server.ts"
+       "./plugins/mimo-multimodal-bridge/index.ts"
      ]
    }
    ```

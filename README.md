@@ -46,11 +46,11 @@ irm https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/
    ```bash
    # Linux/Mac
    mkdir -p ~/.config/mimocode/plugins/mimo-multimodal-bridge
-   cp server.ts plugin.json ~/.config/mimocode/plugins/mimo-multimodal-bridge/
+   cp index.ts plugin.json ~/.config/mimocode/plugins/mimo-multimodal-bridge/
 
    # Windows
    mkdir %APPDATA%\mimocode\plugins\mimo-multimodal-bridge
-   copy server.ts plugin.json %APPDATA%\mimocode\plugins\mimo-multimodal-bridge\
+   copy index.ts plugin.json %APPDATA%\mimocode\plugins\mimo-multimodal-bridge\
    ```
 
 3. **添加配置**：
@@ -59,7 +59,7 @@ irm https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/
    ```json
    {
      "plugin": [
-       "~/.config/mimocode/plugins/mimo-multimodal-bridge/server.ts"
+       "~/.config/mimocode/plugins/mimo-multimodal-bridge/index.ts"
      ]
    }
    ```

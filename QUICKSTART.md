@@ -9,14 +9,14 @@
 mkdir -p ~/.config/mimocode/plugins/mimo-multimodal-bridge
 
 # 2. 下载插件
-curl -fsSL https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/server.ts -o ~/.config/mimocode/plugins/mimo-multimodal-bridge/server.ts
+curl -fsSL https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/index.ts -o ~/.config/mimocode/plugins/mimo-multimodal-bridge/index.ts
 curl -fsSL https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/plugin.json -o ~/.config/mimocode/plugins/mimo-multimodal-bridge/plugin.json
 
 # 3. 添加配置
 cat >> ~/.config/mimocode/mimocode.json << 'EOF'
 {
   "plugin": [
-    "~/.config/mimocode/plugins/mimo-multimodal-bridge/server.ts"
+    "~/.config/mimocode/plugins/mimo-multimodal-bridge/index.ts"
   ]
 }
 EOF
@@ -31,13 +31,13 @@ EOF
 mkdir -p $env:APPDATA\mimocode\plugins\mimo-multimodal-bridge
 
 # 2. 下载插件
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/server.ts" -OutFile "$env:APPDATA\mimocode\plugins\mimo-multimodal-bridge\server.ts"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/index.ts" -OutFile "$env:APPDATA\mimocode\plugins\mimo-multimodal-bridge\index.ts"
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/plugin.json" -OutFile "$env:APPDATA\mimocode\plugins\mimo-multimodal-bridge\plugin.json"
 
 # 3. 添加配置
 $configPath = "$env:APPDATA\mimocode\mimocode.json"
 if (!(Test-Path $configPath)) {
-    '{"plugin":["$env:APPDATA\\mimocode\\plugins\\mimo-multimodal-bridge\\server.ts"]}' | Out-File $configPath -Encoding UTF8
+    '{"plugin":["$env:APPDATA\\mimocode\\plugins\\mimo-multimodal-bridge\\index.ts"]}' | Out-File $configPath -Encoding UTF8
 } else {
     Write-Host "请手动编辑配置文件添加 plugin 字段: $configPath"
 }

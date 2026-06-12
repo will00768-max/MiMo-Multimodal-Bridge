@@ -32,7 +32,7 @@ mkdir -p "$PLUGIN_DIR"
 
 # 复制插件文件
 echo "复制插件文件..."
-cp "$SOURCE_DIR/server.ts" "$PLUGIN_DIR/"
+cp "$SOURCE_DIR/index.ts" "$PLUGIN_DIR/"
 cp "$SOURCE_DIR/plugin.json" "$PLUGIN_DIR/"
 
 # 检查配置文件
@@ -42,7 +42,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
     cat > "$CONFIG_FILE" << EOF
 {
   "plugin": [
-    "$PLUGIN_DIR/server.ts"
+    "$PLUGIN_DIR/index.ts"
   ]
 }
 EOF
@@ -52,12 +52,12 @@ else
     echo "配置文件已存在: $CONFIG_FILE"
     echo ""
     echo "请手动添加以下内容到 plugin 数组:"
-    echo "  \"$PLUGIN_DIR/server.ts\""
+    echo "  \"$PLUGIN_DIR/index.ts\""
     echo ""
     echo "示例:"
     echo '  {'
     echo '    "plugin": ['
-    echo "      \"$PLUGIN_DIR/server.ts\""
+    echo "      \"$PLUGIN_DIR/index.ts\""
     echo '    ]'
     echo '  }'
 fi
