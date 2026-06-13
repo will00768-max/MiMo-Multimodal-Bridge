@@ -1,5 +1,4 @@
-import type { Plugin, Hooks } from "@mimo-ai/plugin"
-import { tool } from "@mimo-ai/plugin"
+import { tool } from "@@mimocode/cli/plugin"
 import { readFileSync, existsSync, appendFileSync, mkdirSync } from "fs"
 import { join, resolve } from "path"
 import { homedir } from "os"
@@ -99,10 +98,10 @@ async function callMultimodalModel(client: any, sessionID: string, filePart: any
   return description
 }
 
-const server: Plugin = async ({ client }) => {
+const server = async ({ client }: any) => {
   log("INFO", "插件已加载，开始注册钩子")
 
-  const hooks: Hooks = {
+  const hooks: any = {
     tool: {
       understand_media: tool({
         description: `理解图片、音频、视频或PDF文档的内容。
