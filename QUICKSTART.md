@@ -2,10 +2,11 @@
 
 ## 30 秒安装
 
-### 方式一：使用插件命令（推荐）
+### 方式一：使用安装脚本（推荐）
 
 ```bash
-mimo plugin mimo-multimodal-bridge
+# Linux/Mac
+curl -fsSL https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/install.sh | bash
 ```
 
 ### 方式二：手动安装（Linux/Mac）

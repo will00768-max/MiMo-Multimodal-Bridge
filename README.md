@@ -53,10 +53,7 @@ sequenceDiagram
 #### 快速安装（推荐）
 
 ```bash
-# 使用 MiMo Code 插件命令
-mimo plugin mimo-multimodal-bridge
-
-# 或使用安装脚本（Linux/Mac）
+# Linux/Mac
 curl -fsSL https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/install.sh | bash
 
 # Windows (PowerShell)
@@ -224,10 +221,7 @@ sequenceDiagram
 #### Quick Install (Recommended)
 
 ```bash
-# Using MiMo Code plugin command
-mimo plugin mimo-multimodal-bridge
-
-# Or manually via install script (Linux/Mac)
+# Linux/Mac
 curl -fsSL https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/install.sh | bash
 
 # Windows (PowerShell)

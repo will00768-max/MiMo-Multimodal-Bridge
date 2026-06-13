@@ -19,13 +19,7 @@ MiMo Code 和 OpenCode 使用 XDG 标准路径：
 
 ## 安装步骤
 
-### 方式一：使用插件命令（推荐）
-
-```bash
-mimo plugin mimo-multimodal-bridge
-```
-
-### 方式二：使用安装脚本
+### 方式一：使用安装脚本（推荐）
 
 ```bash
 # Linux/Mac
@@ -35,13 +29,7 @@ curl -fsSL https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridg
 irm https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/install.ps1 | iex
 ```
 
-脚本会自动：
-1. 询问安装平台（MiMo Code 或 OpenCode）
-2. 创建插件目录
-3. 下载插件文件
-4. 创建或更新配置文件
-
-### 方式三：手动安装
+### 方式二：手动安装
 
 #### 步骤 1：找到配置目录
 
