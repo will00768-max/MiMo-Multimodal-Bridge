@@ -39,14 +39,24 @@ sequenceDiagram
     P-->>U: 展示结果
 ```
 
-**核心机制**：通过插件系统的 `tool` 钩子，当主模型遇到不支持的多模态内容时，自动桥接到支持多模态的模型进行预处理，实现跨模型能力扩展。
+**核心机制**：基于 `@mimo-ai/plugin` 官方插件 API，通过注册 `understand_media` 自定义工具，当主模型遇到不支持的多模态内容时，自动桥接到支持多模态的模型（mimo-v2.5）进行预处理，实现跨模型能力扩展。
+
+### 技术实现
+
+- 使用 `tool()` 函数注册自定义工具，参数通过 Zod schema 定义
+- 通过 `client.session.prompt()` 调用多模态模型，复用当前会话上下文
+- 本地文件自动转为 base64 data URL，支持 `file://` 协议和相对路径
+- `chat.message` 钩子用于检测多模态内容并记录日志
 
 ### 安装
 
 #### 快速安装（推荐）
 
 ```bash
-# Linux/Mac
+# 使用 MiMo Code 插件命令
+mimo plugin mimo-multimodal-bridge
+
+# 或使用安装脚本（Linux/Mac）
 curl -fsSL https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/install.sh | bash
 
 # Windows (PowerShell)
@@ -140,8 +150,11 @@ def calculate(a, b):
 ### 配置选项
 
 插件使用以下默认配置：
-- **多模态模型**: mimo-v2.5
-- **Provider**: mimo
+- **多模态模型**: `mimo/mimo-v2.5`
+- **调用方式**: `client.session.prompt()`（复用当前会话）
+- **文件处理**: 本地文件自动转为 base64 data URL
+
+如需使用其他多模态模型，可修改 `index.ts` 中的 `model` 字段。
 
 ### 升级兼容性
 
@@ -204,9 +217,22 @@ sequenceDiagram
     P-->>U: Display result
 ```
 
-**Core Mechanism**: Leverages the plugin system's `tool` hook to automatically bridge to a multimodal-capable model for preprocessing when the primary model encounters unsupported content, enabling cross-model capability extension.
+**Core Mechanism**: Based on the official `@mimo-ai/plugin` API, registers a custom `understand_media` tool via `tool()`. When the primary model encounters unsupported multimodal content, it automatically bridges to a multimodal-capable model (mimo-v2.5) for preprocessing via `client.session.prompt()`, enabling cross-model capability extension.
 
 ### Installation
+
+#### Quick Install (Recommended)
+
+```bash
+# Using MiMo Code plugin command
+mimo plugin mimo-multimodal-bridge
+
+# Or manually via install script (Linux/Mac)
+curl -fsSL https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/install.ps1 | iex
+```
 
 See [INSTALL-GLOBAL.md](./INSTALL-GLOBAL.md) for detailed installation instructions.
 

@@ -1,40 +1,27 @@
 import type { Plugin, Hooks } from "@mimo-ai/plugin"
 import { tool } from "@mimo-ai/plugin"
 import { readFileSync, existsSync, appendFileSync, mkdirSync } from "fs"
-import { join } from "path"
+import { join, resolve } from "path"
 import { homedir } from "os"
+import { pathToFileURL } from "url"
 
-/**
- * MiMo-Multimodal-Bridge
- * 
- * 让不支持多模态的模型（如 mimo-v2.5-pro）能够理解图片、音频、视频内容。
- * 通过提供 understand_media 工具，实现跨模型的多模态能力桥接。
- * 
- * GitHub: https://github.com/will00768-max/MiMo-Multimodal-Bridge
- */
-
-// 日志文件路径
 const LOG_DIR = join(homedir(), ".config", "mimocode", "plugins", "mimo-multimodal-bridge", "logs")
 const LOG_FILE = join(LOG_DIR, "plugin.log")
 
-// 确保日志目录存在
 try {
   mkdirSync(LOG_DIR, { recursive: true })
 } catch {}
 
-// 写入日志
 function log(level: string, message: string, data?: any) {
   const timestamp = new Date().toISOString()
-  const logEntry = data 
-    ? `[${timestamp}] [${level}] ${message} ${JSON.stringify(data, null, 2)}\n`
+  const entry = data
+    ? `[${timestamp}] [${level}] ${message} ${JSON.stringify(data)}\n`
     : `[${timestamp}] [${level}] ${message}\n`
-  
   try {
-    appendFileSync(LOG_FILE, logEntry)
+    appendFileSync(LOG_FILE, entry)
   } catch {}
 }
 
-// 多模态 MIME 类型检测
 const MEDIA_TYPES: Record<string, { name: string; modality: string }> = {
   "image/png": { name: "图片", modality: "image" },
   "image/jpeg": { name: "图片", modality: "image" },
@@ -56,44 +43,31 @@ function getMediaType(mime: string) {
   return null
 }
 
-// 将文件转换为 data URL
 function fileToDataUrl(fileUrl: string, mime: string): string | null {
   try {
-    // 处理 file:// URL，提取本地路径
     let filePath = fileUrl
     if (filePath.startsWith("file://")) {
-      // 移除 file:// 前缀，处理 Windows 路径
-      filePath = filePath.replace("file://", "").replace(/\//g, "\\")
-      // 处理 URL 编码的字符
-      filePath = decodeURIComponent(filePath)
+      filePath = decodeURIComponent(new URL(filePath).pathname)
     }
-    
-    log("INFO", "读取文件", { filePath })
-    
-    if (!existsSync(filePath)) {
-      log("ERROR", "文件不存在", { filePath })
+
+    const resolved = resolve(filePath)
+    log("INFO", "读取文件", { resolved })
+
+    if (!existsSync(resolved)) {
+      log("ERROR", "文件不存在", { resolved })
       return null
     }
-    const buffer = readFileSync(filePath)
-    const base64 = buffer.toString("base64")
+    const buffer = readFileSync(resolved)
     log("INFO", "文件读取成功", { size: buffer.length })
-    return `data:${mime};base64,${base64}`
+    return `data:${mime};base64,${buffer.toString("base64")}`
   } catch (error) {
     log("ERROR", "读取文件失败", { error: String(error) })
     return null
   }
 }
 
-/**
- * 插件主函数
- */
-const server: Plugin = async (input) => {
-  const { client } = input
-
+const server: Plugin = async ({ client }) => {
   const hooks: Hooks = {
-    /**
-     * 注册 understand_media 工具
-     */
     tool: {
       understand_media: tool({
         description: `理解图片、音频、视频或PDF文档的内容。
@@ -125,10 +99,7 @@ const server: Plugin = async (input) => {
 
           const mediaType = getMediaType(mime)
           if (!mediaType) {
-            return {
-              output: `不支持的文件类型: ${mime}`,
-              metadata: { error: "unsupported_type" },
-            }
+            return { output: `不支持的文件类型: ${mime}` }
           }
 
           const defaultQuestions: Record<string, string> = {
@@ -138,143 +109,94 @@ const server: Plugin = async (input) => {
             pdf: "请提取这个PDF文档的主要文本内容。",
           }
 
-          const prompt = question || defaultQuestions[mediaType.modality] || 
-            `请描述这个${mediaType.name}的内容。`
+          const prompt = question || defaultQuestions[mediaType.modality] || `请描述这个${mediaType.name}的内容。`
 
-          context.metadata({
-            title: `理解${mediaType.name}: ${filename || "未命名文件"}`,
-          })
+          context.metadata({ title: `理解${mediaType.name}: ${filename || "未命名文件"}` })
 
           try {
-            // 处理文件 URL
             let fileUrl = url
-            
-            // 如果是本地文件路径，转换为 data URL
+
             if (!url.startsWith("data:") && !url.startsWith("http")) {
-              log("INFO", "本地文件路径，转换为 data URL", { url })
+              log("INFO", "本地文件路径，转换为 data URL")
               const dataUrl = fileToDataUrl(url, mime)
               if (dataUrl) {
                 fileUrl = dataUrl
-                log("INFO", "转换成功", { dataUrlLength: dataUrl.length })
               } else {
-                log("ERROR", "文件不存在或无法读取", { url })
-                return {
-                  output: `无法读取文件: ${url}`,
-                  metadata: { error: "file_not_found" },
-                }
+                return { output: `无法读取文件: ${url}` }
               }
             }
 
-            // 创建新 session 来调用多模态模型
-            log("INFO", "创建新 session 调用多模态模型")
-            const session = await client.session.create({})
-            const sessionId = session.id
-            log("INFO", "session 创建成功", { sessionId })
-
-            // 调用多模态模型
-            log("INFO", "调用 session.prompt API", { sessionId, modelConfig })
+            log("INFO", "调用多模态模型 mimo/mimo-v2.5")
             const response = await client.session.prompt({
-              path: { id: sessionId },
+              path: { id: context.sessionID },
               body: {
                 parts: [
-                  {
-                    type: "file",
-                    mime: mime,
-                    url: fileUrl,
-                    filename: filename,
-                  },
-                  {
-                    type: "text",
-                    text: prompt,
-                  },
+                  { type: "file", mime, url: fileUrl, filename },
+                  { type: "text", text: prompt },
                 ],
-                model: {
-                  providerID: "mimo",
-                  modelID: "mimo-v2.5",
-                },
+                model: { providerID: "mimo", modelID: "mimo-v2.5" },
+                source: "hook",
+                noReply: true,
               },
             })
 
-            log("INFO", "API 返回结果", { 
-              responseType: typeof response,
-              responseKeys: response ? Object.keys(response) : null,
-              response: JSON.stringify(response).substring(0, 500)
-            })
+            log("INFO", "API 返回结果", { responseType: typeof response })
 
-            // 检查 response 结构
             if (!response) {
-              log("ERROR", "API 返回空结果")
-              return {
-                output: "API 返回空结果",
-                metadata: { error: "empty_response" },
-              }
+              return { output: "API 返回空结果" }
             }
 
-            // 尝试不同的响应格式
+            const data = (response as any).data ?? response
             let description = ""
-            if (response.parts) {
-              const textParts = response.parts.filter((p: any) => p.type === "text")
-              description = textParts.map((p: any) => p.text).join("\n")
-            } else if (response.info?.parts) {
-              const textParts = response.info.parts.filter((p: any) => p.type === "text")
-              description = textParts.map((p: any) => p.text).join("\n")
-            } else if (typeof response === "string") {
-              description = response
+
+            if (data?.parts) {
+              description = data.parts
+                .filter((p: any) => p.type === "text")
+                .map((p: any) => p.text)
+                .join("\n")
+            } else if (typeof data === "string") {
+              description = data
             } else {
-              log("ERROR", "无法解析响应格式", { response })
-              description = JSON.stringify(response)
+              description = JSON.stringify(data)
             }
 
-            log("INFO", "描述生成成功", { descriptionLength: description.length })
+            log("INFO", "描述生成成功", { length: description.length })
 
             return {
               output: description || "无法理解该内容",
               metadata: {
                 mediaType: mediaType.modality,
-                filename: filename,
+                filename,
                 model: "mimo-v2.5",
               },
             }
           } catch (error) {
-            log("ERROR", "执行失败", { error: String(error), stack: (error as any).stack })
-            return {
-              output: `处理${mediaType.name}时出错: ${error}`,
-              metadata: { error: String(error) },
-            }
+            log("ERROR", "执行失败", { error: String(error) })
+            return { output: `处理${mediaType.name}时出错: ${error}` }
           }
         },
       }),
     },
 
-    /**
-     * 在消息接收时检测多模态内容
-     */
     "chat.message": async (input, output) => {
-      const { parts } = output
+      const mediaParts = output.parts.filter((part) => {
+        if (part.type !== "file") return false
+        const mime = (part as any).mime
+        return mime ? getMediaType(mime) !== null : false
+      })
 
-      log("INFO", "chat.message 触发", { partsCount: parts.length })
-      
-      // 检测多模态内容
-      const mediaParts = parts.filter(
-        (part) => {
-          const isFile = part.type === "file"
-          const mime = (part as any).mime
-          const mediaType = mime ? getMediaType(mime) : null
-          if (isFile && mediaType) {
-            log("INFO", "检测到多模态内容", { type: part.type, mime, mediaType })
-          }
-          return isFile && mediaType
-        }
-      )
-
-      log("INFO", "多模态文件数量", { count: mediaParts.length })
+      if (mediaParts.length > 0) {
+        log("INFO", "检测到多模态内容", {
+          count: mediaParts.length,
+          types: mediaParts.map((p) => (p as any).mime),
+        })
+      }
     },
   }
 
   return hooks
 }
 
-// 导出格式必须符合 MiMo Code 插件规范
 export default {
   id: "mimo-multimodal-bridge",
   server,

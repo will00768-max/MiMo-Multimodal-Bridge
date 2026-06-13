@@ -2,7 +2,13 @@
 
 ## 30 秒安装
 
-### Linux/Mac
+### 方式一：使用插件命令（推荐）
+
+```bash
+mimo plugin mimo-multimodal-bridge
+```
+
+### 方式二：手动安装（Linux/Mac）
 
 ```bash
 # 1. 创建插件目录
@@ -24,7 +30,7 @@ EOF
 # 4. 重启 MiMo Code
 ```
 
-### Windows (PowerShell)
+### 方式二：手动安装（Windows PowerShell）
 
 ```powershell
 # 1. 创建插件目录
