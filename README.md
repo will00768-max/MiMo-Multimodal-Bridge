@@ -23,30 +23,29 @@ MiMo 多模态桥接插件 - 让不支持多模态的模型（如 mimo-v2.5-pro�
 sequenceDiagram
     participant U as 👤 用户
     participant P as 🔌 MiMo Code
-    participant T as 🛠️ understand_media
+    participant H as 🪝 chat.message 钩子
     participant V as 👁️ mimo-v2.5
     participant R as 🧠 mimo-v2.5-pro
 
     U->>P: 发送图片/音频/视频
-    P->>R: 转发消息
-    R-->>P: 不支持多模态输入
-    P->>T: 调用 understand_media 工具
-    T->>V: 发送多模态内容
-    V-->>T: 返回理解结果
-    T-->>P: 返回文本描述
-    P->>R: 注入描述 + 原始消息
+    P->>H: 拦截消息
+    H->>V: 调用多模态模型理解内容
+    V-->>H: 返回文本描述
+    H->>P: 替换为文本描述
+    P->>R: 转发文本描述
     R-->>P: 生成最终回复
     P-->>U: 展示结果
 ```
 
-**核心机制**：基于 `@mimo-ai/plugin` 官方插件 API，通过注册 `understand_media` 自定义工具，当主模型遇到不支持的多模态内容时，自动桥接到支持多模态的模型（mimo-v2.5）进行预处理，实现跨模型能力扩展。
+**核心机制**：基于 `@mimo-ai/plugin` 官方插件 API，通过 `chat.message` 钩子自动拦截多模态内容。当检测到用户发送了图片、音频或视频时，自动调用 mimo-v2.5 模型进行预处理，将结果转为文本描述后传递给主模型，实现跨模型能力扩展。
 
 ### 技术实现
 
-- 使用 `tool()` 函数注册自定义工具，参数通过 Zod schema 定义
-- 通过 `client.session.prompt()` 调用多模态模型，复用当前会话上下文
+- 使用 `chat.message` 钩子在消息到达模型前自动拦截多模态内容
+- 拦截后调用 `client.session.prompt()` 将内容发送给 mimo-v2.5 模型
+- mimo-v2.5 返回的文本描述替换原始的文件部分
+- 同时注册 `understand_media` 工具供模型主动调用
 - 本地文件自动转为 base64 data URL，支持 `file://` 协议和相对路径
-- `chat.message` 钩子用于检测多模态内容并记录日志
 
 ### 安装
 
@@ -198,23 +197,21 @@ MiMo Multimodal Bridge Plugin - Enable text-only models (like mimo-v2.5-pro) to 
 sequenceDiagram
     participant U as 👤 User
     participant P as 🔌 MiMo Code
-    participant T as 🛠️ understand_media
+    participant H as 🪝 chat.message Hook
     participant V as 👁️ mimo-v2.5
     participant R as 🧠 mimo-v2.5-pro
 
     U->>P: Send image/audio/video
-    P->>R: Forward message
-    R-->>P: Multimodal not supported
-    P->>T: Call understand_media tool
-    T->>V: Send multimodal content
-    V-->>T: Return understanding
-    T-->>P: Return text description
-    P->>R: Inject description + original
+    P->>H: Intercept message
+    H->>V: Call multimodal model
+    V-->>H: Return text description
+    H->>P: Replace with text description
+    P->>R: Forward text description
     R-->>P: Generate final response
     P-->>U: Display result
 ```
 
-**Core Mechanism**: Based on the official `@mimo-ai/plugin` API, registers a custom `understand_media` tool via `tool()`. When the primary model encounters unsupported multimodal content, it automatically bridges to a multimodal-capable model (mimo-v2.5) for preprocessing via `client.session.prompt()`, enabling cross-model capability extension.
+**Core Mechanism**: Based on the official `@mimo-ai/plugin` API, uses a `chat.message` hook to automatically intercept multimodal content. When images, audio, or video are detected, it calls mimo-v2.5 for preprocessing, converts the result to text description, and passes it to the primary model, enabling cross-model capability extension.
 
 ### Installation
 

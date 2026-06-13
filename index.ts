@@ -1,26 +1,8 @@
 import type { Plugin, Hooks } from "@mimo-ai/plugin"
 import { tool } from "@mimo-ai/plugin"
-import { readFileSync, existsSync, appendFileSync, mkdirSync } from "fs"
-import { join, resolve } from "path"
-import { homedir } from "os"
+import { readFileSync, existsSync } from "fs"
+import { resolve } from "path"
 import { pathToFileURL } from "url"
-
-const LOG_DIR = join(homedir(), ".config", "mimocode", "plugins", "mimo-multimodal-bridge", "logs")
-const LOG_FILE = join(LOG_DIR, "plugin.log")
-
-try {
-  mkdirSync(LOG_DIR, { recursive: true })
-} catch {}
-
-function log(level: string, message: string, data?: any) {
-  const timestamp = new Date().toISOString()
-  const entry = data
-    ? `[${timestamp}] [${level}] ${message} ${JSON.stringify(data)}\n`
-    : `[${timestamp}] [${level}] ${message}\n`
-  try {
-    appendFileSync(LOG_FILE, entry)
-  } catch {}
-}
 
 const MEDIA_TYPES: Record<string, { name: string; modality: string }> = {
   "image/png": { name: "图片", modality: "image" },
@@ -49,21 +31,20 @@ function fileToDataUrl(fileUrl: string, mime: string): string | null {
     if (filePath.startsWith("file://")) {
       filePath = decodeURIComponent(new URL(filePath).pathname)
     }
-
     const resolved = resolve(filePath)
-    log("INFO", "读取文件", { resolved })
-
-    if (!existsSync(resolved)) {
-      log("ERROR", "文件不存在", { resolved })
-      return null
-    }
+    if (!existsSync(resolved)) return null
     const buffer = readFileSync(resolved)
-    log("INFO", "文件读取成功", { size: buffer.length })
     return `data:${mime};base64,${buffer.toString("base64")}`
-  } catch (error) {
-    log("ERROR", "读取文件失败", { error: String(error) })
+  } catch {
     return null
   }
+}
+
+const defaultQuestions: Record<string, string> = {
+  image: "请详细描述这张图片的内容。如果是代码截图，请完整提取代码并解释。如果是图表，请描述数据和趋势。如果是错误截图，请提取错误信息。",
+  audio: "请转录这段音频的内容。如果有多个说话人，请区分。",
+  video: "请描述这个视频的主要内容，包括场景、动作和对话。",
+  pdf: "请提取这个PDF文档的主要文本内容。",
 }
 
 const server: Plugin = async ({ client }) => {
@@ -71,7 +52,7 @@ const server: Plugin = async ({ client }) => {
     tool: {
       understand_media: tool({
         description: `理解图片、音频、视频或PDF文档的内容。
-当用户发送了不支持的多模态内容（如图片、音频、视频）时，必须使用此工具来获取内容描述。
+当用户发送了图片、音频、视频或PDF时，使用此工具来获取内容描述。
 
 使用场景：
 1. 用户发送了图片（截图、照片、图表等）
@@ -85,7 +66,7 @@ const server: Plugin = async ({ client }) => {
 - 视频：描述场景、动作和对话
 - PDF：提取文本内容`,
         args: {
-          url: tool.schema.string().describe("文件的 data: URL 或文件路径"),
+          url: tool.schema.string().describe("文件的 data: URL、http(s) URL 或本地文件路径"),
           mime: tool.schema.string().describe("文件的 MIME 类型，如 image/png, audio/wav 等"),
           filename: tool.schema.string().optional().describe("文件名（可选）"),
           question: tool.schema.string().optional().describe(
@@ -95,38 +76,26 @@ const server: Plugin = async ({ client }) => {
         async execute(args, context) {
           const { url, mime, filename, question } = args
 
-          log("INFO", "understand_media 开始执行", { url, mime, filename })
-
           const mediaType = getMediaType(mime)
           if (!mediaType) {
-            return { output: `不支持的文件类型: ${mime}` }
-          }
-
-          const defaultQuestions: Record<string, string> = {
-            image: "请详细描述这张图片的内容。如果是代码截图，请完整提取代码并解释。如果是图表，请描述数据和趋势。如果是错误截图，请提取错误信息。",
-            audio: "请转录这段音频的内容。如果有多个说话人，请区分。",
-            video: "请描述这个视频的主要内容，包括场景、动作和对话。",
-            pdf: "请提取这个PDF文档的主要文本内容。",
+            return `不支持的文件类型: ${mime}`
           }
 
           const prompt = question || defaultQuestions[mediaType.modality] || `请描述这个${mediaType.name}的内容。`
-
           context.metadata({ title: `理解${mediaType.name}: ${filename || "未命名文件"}` })
 
           try {
             let fileUrl = url
 
             if (!url.startsWith("data:") && !url.startsWith("http")) {
-              log("INFO", "本地文件路径，转换为 data URL")
               const dataUrl = fileToDataUrl(url, mime)
               if (dataUrl) {
                 fileUrl = dataUrl
               } else {
-                return { output: `无法读取文件: ${url}` }
+                return `无法读取文件: ${url}`
               }
             }
 
-            log("INFO", "调用多模态模型 mimo/mimo-v2.5")
             const response = await client.session.prompt({
               path: { id: context.sessionID },
               body: {
@@ -140,11 +109,7 @@ const server: Plugin = async ({ client }) => {
               },
             })
 
-            log("INFO", "API 返回结果", { responseType: typeof response })
-
-            if (!response) {
-              return { output: "API 返回空结果" }
-            }
+            if (!response) return "API 返回空结果"
 
             const data = (response as any).data ?? response
             let description = ""
@@ -160,19 +125,9 @@ const server: Plugin = async ({ client }) => {
               description = JSON.stringify(data)
             }
 
-            log("INFO", "描述生成成功", { length: description.length })
-
-            return {
-              output: description || "无法理解该内容",
-              metadata: {
-                mediaType: mediaType.modality,
-                filename,
-                model: "mimo-v2.5",
-              },
-            }
+            return description || "无法理解该内容"
           } catch (error) {
-            log("ERROR", "执行失败", { error: String(error) })
-            return { output: `处理${mediaType.name}时出错: ${error}` }
+            return `处理${mediaType.name}时出错: ${error}`
           }
         },
       }),
@@ -185,11 +140,63 @@ const server: Plugin = async ({ client }) => {
         return mime ? getMediaType(mime) !== null : false
       })
 
-      if (mediaParts.length > 0) {
-        log("INFO", "检测到多模态内容", {
-          count: mediaParts.length,
-          types: mediaParts.map((p) => (p as any).mime),
-        })
+      if (mediaParts.length === 0) return
+
+      for (const part of mediaParts) {
+        const filePart = part as any
+        const mediaType = getMediaType(filePart.mime)
+        if (!mediaType) continue
+
+        const index = output.parts.indexOf(part)
+        if (index === -1) continue
+
+        try {
+          let fileUrl = filePart.url || ""
+
+          if (!fileUrl.startsWith("data:") && !fileUrl.startsWith("http")) {
+            const dataUrl = fileToDataUrl(fileUrl, filePart.mime)
+            if (dataUrl) fileUrl = dataUrl
+          }
+
+          const defaultQuestion = defaultQuestions[mediaType.modality] || `请描述这个${mediaType.name}的内容。`
+
+          const response = await client.session.prompt({
+            path: { id: input.sessionID },
+            body: {
+              parts: [
+                { type: "file", mime: filePart.mime, url: fileUrl, filename: filePart.filename },
+                { type: "text", text: defaultQuestion },
+              ],
+              model: { providerID: "mimo", modelID: "mimo-v2.5" },
+              source: "hook",
+              noReply: true,
+            },
+          })
+
+          const data = (response as any).data ?? response
+          let description = ""
+
+          if (data?.parts) {
+            description = data.parts
+              .filter((p: any) => p.type === "text")
+              .map((p: any) => p.text)
+              .join("\n")
+          } else if (typeof data === "string") {
+            description = data
+          } else {
+            description = JSON.stringify(data)
+          }
+
+          output.parts[index] = {
+            type: "text",
+            text: `[${mediaType.name}内容 - 由 mimo-v2.5 理解]\n${description}`,
+          } as any
+        } catch (error) {
+          output.parts[index] = {
+            type: "text",
+            text: `[${mediaType.name}处理失败: ${error}]`,
+          } as any
+        }
       }
     },
   }
