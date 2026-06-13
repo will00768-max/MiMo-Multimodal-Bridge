@@ -199,6 +199,71 @@ const server: Plugin = async ({ client }) => {
         }
       }
     },
+
+    "experimental.chat.messages.transform": async (input, output) => {
+      for (const msg of output.messages) {
+        const fileParts = msg.parts.filter((part) => {
+          if (part.type !== "file") return false
+          const mime = (part as any).mime
+          return mime ? getMediaType(mime) !== null : false
+        })
+
+        for (const part of fileParts) {
+          const filePart = part as any
+          const mediaType = getMediaType(filePart.mime)
+          if (!mediaType) continue
+
+          const index = msg.parts.indexOf(part)
+          if (index === -1) continue
+
+          try {
+            let fileUrl = filePart.url || ""
+            if (!fileUrl.startsWith("data:") && !fileUrl.startsWith("http")) {
+              const dataUrl = fileToDataUrl(fileUrl, filePart.mime)
+              if (dataUrl) fileUrl = dataUrl
+            }
+
+            const defaultQuestion = defaultQuestions[mediaType.modality] || `请描述这个${mediaType.name}的内容。`
+
+            const response = await client.session.prompt({
+              path: { id: (input as any).sessionID || "" },
+              body: {
+                parts: [
+                  { type: "file", mime: filePart.mime, url: fileUrl, filename: filePart.filename },
+                  { type: "text", text: defaultQuestion },
+                ],
+                model: { providerID: "mimo", modelID: "mimo-v2.5" },
+                source: "hook",
+                noReply: true,
+              },
+            })
+
+            const data = (response as any).data ?? response
+            let description = ""
+            if (data?.parts) {
+              description = data.parts
+                .filter((p: any) => p.type === "text")
+                .map((p: any) => p.text)
+                .join("\n")
+            } else if (typeof data === "string") {
+              description = data
+            } else {
+              description = JSON.stringify(data)
+            }
+
+            msg.parts[index] = {
+              type: "text",
+              text: `[${mediaType.name}内容 - 由 mimo-v2.5 理解]\n${description}`,
+            } as any
+          } catch (error) {
+            msg.parts[index] = {
+              type: "text",
+              text: `[${mediaType.name}处理失败: ${error}]`,
+            } as any
+          }
+        }
+      }
+    },
   }
 
   return hooks
