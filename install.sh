@@ -76,7 +76,19 @@ if [ ! -f "$CONFIG_FILE" ]; then
 {
   "plugin": [
     "$PLUGIN_DIR/index.ts"
-  ]
+  ],
+  "provider": {
+    "mimo": {
+      "models": {
+        "mimo-v2.5-pro": {
+          "modalities": {
+            "input": ["text", "image", "audio", "video"],
+            "output": ["text"]
+          }
+        }
+      }
+    }
+  }
 }
 EOF
     echo "配置文件已创建: $CONFIG_FILE"
@@ -84,15 +96,26 @@ else
     echo ""
     echo "配置文件已存在: $CONFIG_FILE"
     echo ""
-    echo "请手动添加以下内容到 plugin 数组:"
-    echo "  \"$PLUGIN_DIR/index.ts\""
+    echo "请确保配置文件中包含以下内容:"
     echo ""
-    echo "示例:"
-    echo '  {'
-    echo '    "plugin": ['
-    echo "      \"$PLUGIN_DIR/index.ts\""
-    echo '    ]'
-    echo '  }'
+    cat << 'MANUAL'
+  "plugin": [
+    "~/.config/mimocode/plugins/mimo-multimodal-bridge/index.ts"
+  ],
+  "provider": {
+    "mimo": {
+      "models": {
+        "mimo-v2.5-pro": {
+          "modalities": {
+            "input": ["text", "image", "audio", "video"],
+            "output": ["text"]
+          }
+        }
+      }
+    }
+  }
+MANUAL
+    echo ""
 fi
 
 echo ""
@@ -104,8 +127,8 @@ echo "请重启 $platform 以加载插件。"
 echo ""
 echo "使用方法:"
 echo "  1. 发送图片/音频/视频给不支持多模态的模型"
-echo "  2. 模型会自动调用 understand_media 工具"
-echo "  3. 工具会调用 mimo-v2.5 来理解内容"
+echo "  2. 插件会自动拦截并调用 mimo-v2.5 理解内容"
+echo "  3. 理解结果会以文本形式传给主模型"
 echo ""
 echo "更多信息请参考:"
 echo "  $REPO_URL"
