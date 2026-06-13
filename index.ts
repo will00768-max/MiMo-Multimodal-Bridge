@@ -1,4 +1,4 @@
-import { tool } from "@@mimocode/cli/plugin"
+import { tool } from "@mimocode/cli/plugin"
 import { readFileSync, existsSync, appendFileSync, mkdirSync } from "fs"
 import { join, resolve } from "path"
 import { homedir } from "os"
