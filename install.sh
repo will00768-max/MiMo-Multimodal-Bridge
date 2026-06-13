@@ -34,7 +34,7 @@ echo "请选择安装平台:"
 echo "  1) MiMo Code (默认)"
 echo "  2) OpenCode"
 echo ""
-read -p "请输入选项 (1/2，默认 1): " choice
+read -p "请输入选项 (1/2，默认 1): " choice < /dev/tty
 
 case "$choice" in
     2)
