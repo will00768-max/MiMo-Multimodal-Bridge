@@ -1,6 +1,19 @@
 import { tool } from "@@mimocode/cli/plugin"
-import { readFileSync, existsSync } from "fs"
-import { resolve } from "path"
+import { readFileSync, existsSync, statSync } from "fs"
+import { extname, resolve } from "path"
+
+// Only media files are legitimate inputs for this tool. Restricting reads to
+// these extensions prevents the tool from being coerced into reading and
+// exfiltrating arbitrary local files (e.g. ~/.ssh/id_rsa, .env, credentials).
+const ALLOWED_EXTENSIONS: Record<string, string[]> = {
+  image: [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".tif", ".tiff", ".heic", ".heif"],
+  audio: [".wav", ".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".flac", ".weba"],
+  video: [".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v"],
+  pdf: [".pdf"],
+}
+
+// Guard against reading very large files into memory and inflating requests.
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
 
 const MEDIA_TYPES: Record<string, { name: string; modality: string }> = {
   "image/png": { name: "图片", modality: "image" },
@@ -23,14 +36,22 @@ function getMediaType(mime: string) {
   return null
 }
 
-function fileToDataUrl(fileUrl: string, mime: string): string | null {
+function fileToDataUrl(fileUrl: string, mime: string, modality: string): string | null {
   try {
     let filePath = fileUrl
     if (filePath.startsWith("file://")) {
       filePath = decodeURIComponent(new URL(filePath).pathname)
     }
     const resolved = resolve(filePath)
+
+    const allowed = ALLOWED_EXTENSIONS[modality]
+    if (!allowed || !allowed.includes(extname(resolved).toLowerCase())) return null
+
     if (!existsSync(resolved)) return null
+
+    const stats = statSync(resolved)
+    if (!stats.isFile() || stats.size > MAX_FILE_SIZE) return null
+
     const buffer = readFileSync(resolved)
     return `data:${mime};base64,${buffer.toString("base64")}`
   } catch {
@@ -67,8 +88,8 @@ export default tool({
     try {
       let fileUrl = url
 
-      if (!url.startsWith("data:") && !url.startsWith("http")) {
-        const dataUrl = fileToDataUrl(url, mime)
+      if (!url.startsWith("data:") && !url.startsWith("http://") && !url.startsWith("https://")) {
+        const dataUrl = fileToDataUrl(url, mime, mediaType.modality)
         if (dataUrl) {
           fileUrl = dataUrl
         } else {
