@@ -2,10 +2,7 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 
-echo ==========================================
-echo   MiMo-Multimodal-Bridge 安装
-echo ==========================================
-echo.
+call :banner "MiMo-Multimodal-Bridge 安装"
 
 set "CONFIG_DIR=%APPDATA%\mimocode"
 set "PLUGIN_DIR=%CONFIG_DIR%\plugins\mimo-multimodal-bridge"
@@ -21,8 +18,7 @@ if not exist "%PLUGIN_DIR%" mkdir "%PLUGIN_DIR%"
 
 REM 复制插件文件
 echo 复制插件文件...
-copy /Y "%SOURCE_DIR%index.ts" "%PLUGIN_DIR%\" >nul
-copy /Y "%SOURCE_DIR%plugin.json" "%PLUGIN_DIR%\" >nul
+for %%F in (index.ts plugin.json) do copy /Y "%SOURCE_DIR%%%F" "%PLUGIN_DIR%\" >nul
 
 REM 检查配置文件
 set "CONFIG_FILE=%CONFIG_DIR%\mimocode.json"
@@ -52,10 +48,7 @@ if not exist "%CONFIG_FILE%" (
 )
 
 echo.
-echo ==========================================
-echo   安装完成！
-echo ==========================================
-echo.
+call :banner "安装完成！"
 echo 请重启 MiMo Code 以加载插件。
 echo.
 echo 使用方法:
@@ -69,3 +62,13 @@ echo   - INSTALL-GLOBAL.md
 echo   - QUICKSTART.md
 echo.
 pause
+exit /b 0
+
+REM 输出带分隔线的标题
+REM 参数: %~1 = 标题文本
+:banner
+echo ==========================================
+echo   %~1
+echo ==========================================
+echo.
+exit /b 0

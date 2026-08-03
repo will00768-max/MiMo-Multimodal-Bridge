@@ -5,10 +5,14 @@ set -e
 
 REPO_URL="https://github.com/will00768-max/MiMo-Multimodal-Bridge"
 
-echo "=========================================="
-echo "  MiMo-Multimodal-Bridge 安装"
-echo "=========================================="
-echo ""
+banner() {
+    echo "=========================================="
+    echo "  $1"
+    echo "=========================================="
+    echo ""
+}
+
+banner "MiMo-Multimodal-Bridge 安装"
 
 # 检测是否通过管道运行 (curl | bash)
 SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -47,10 +51,7 @@ echo "复制工具文件..."
 cp "$SOURCE_DIR/index.ts" "$TOOLS_DIR/understand_media.ts"
 
 echo ""
-echo "=========================================="
-echo "  安装完成！"
-echo "=========================================="
-echo ""
+banner "安装完成！"
 echo "请重启 MiMo Code 以加载工具。"
 echo ""
 echo "使用方法:"
