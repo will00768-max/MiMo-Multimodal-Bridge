@@ -165,6 +165,16 @@ def calculate(a, b):
 - 处理大文件时可能较慢
 - 音频/视频理解能力取决于底层模型
 
+### 测试
+
+```bash
+npm install
+npm test              # 运行单元测试
+npm run test:coverage # 运行单元测试并输出覆盖率
+```
+
+测试使用 Vitest，`@@mimocode/cli/plugin`（由宿主程序在运行时注入）在测试中通过 `test/stubs/mimo-plugin.ts` 替换。
+
 ### 开发计划
 
 - [ ] 支持自定义多模态模型配置
@@ -239,6 +249,16 @@ After installation, when encountering unsupported multimodal content, the model 
 | Audio | audio/* | WAV, MP3, etc. |
 | Video | video/* | MP4, WebM, etc. |
 | PDF | application/pdf | PDF documents |
+
+### Testing
+
+```bash
+npm install
+npm test              # run unit tests
+npm run test:coverage # run unit tests with coverage
+```
+
+Tests run on Vitest. The host-injected `@@mimocode/cli/plugin` module is aliased to `test/stubs/mimo-plugin.ts` during tests.
 
 ### License
 

@@ -2,7 +2,7 @@ import { tool } from "@@mimocode/cli/plugin"
 import { readFileSync, existsSync } from "fs"
 import { resolve } from "path"
 
-const MEDIA_TYPES: Record<string, { name: string; modality: string }> = {
+export const MEDIA_TYPES: Record<string, { name: string; modality: string }> = {
   "image/png": { name: "图片", modality: "image" },
   "image/jpeg": { name: "图片", modality: "image" },
   "image/gif": { name: "图片", modality: "image" },
@@ -15,7 +15,7 @@ const MEDIA_TYPES: Record<string, { name: string; modality: string }> = {
   "application/pdf": { name: "PDF文档", modality: "pdf" },
 }
 
-function getMediaType(mime: string) {
+export function getMediaType(mime: string) {
   if (MEDIA_TYPES[mime]) return MEDIA_TYPES[mime]
   if (mime.startsWith("image/")) return { name: "图片", modality: "image" }
   if (mime.startsWith("audio/")) return { name: "音频", modality: "audio" }
@@ -23,7 +23,7 @@ function getMediaType(mime: string) {
   return null
 }
 
-function fileToDataUrl(fileUrl: string, mime: string): string | null {
+export function fileToDataUrl(fileUrl: string, mime: string): string | null {
   try {
     let filePath = fileUrl
     if (filePath.startsWith("file://")) {
@@ -38,7 +38,7 @@ function fileToDataUrl(fileUrl: string, mime: string): string | null {
   }
 }
 
-const defaultQuestions: Record<string, string> = {
+export const defaultQuestions: Record<string, string> = {
   image: "请详细描述这张图片的内容。如果是代码截图，请完整提取代码并解释。如果是图表，请描述数据和趋势。如果是错误截图，请提取错误信息。",
   audio: "请转录这段音频的内容。如果有多个说话人，请区分。",
   video: "请描述这个视频的主要内容，包括场景、动作和对话。",
