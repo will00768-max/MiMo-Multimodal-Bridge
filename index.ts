@@ -2,25 +2,52 @@ import { tool } from "@@mimocode/cli/plugin"
 import { readFileSync, existsSync } from "fs"
 import { resolve } from "path"
 
-const MEDIA_TYPES: Record<string, { name: string; modality: string }> = {
-  "image/png": { name: "图片", modality: "image" },
-  "image/jpeg": { name: "图片", modality: "image" },
-  "image/gif": { name: "图片", modality: "image" },
-  "image/webp": { name: "图片", modality: "image" },
-  "audio/wav": { name: "音频", modality: "audio" },
-  "audio/mp3": { name: "音频", modality: "audio" },
-  "audio/mpeg": { name: "音频", modality: "audio" },
-  "video/mp4": { name: "视频", modality: "video" },
-  "video/webm": { name: "视频", modality: "video" },
-  "application/pdf": { name: "PDF文档", modality: "pdf" },
+type Modality = "image" | "audio" | "video" | "pdf"
+
+type MediaType = {
+  modality: Modality
+  name: string
+  question: string
+  /** MIME prefix that also maps to this modality, e.g. "image/". */
+  mimePrefix?: string
+  /** Exact MIME types that map to this modality. */
+  mimeTypes?: string[]
 }
 
-function getMediaType(mime: string) {
-  if (MEDIA_TYPES[mime]) return MEDIA_TYPES[mime]
-  if (mime.startsWith("image/")) return { name: "图片", modality: "image" }
-  if (mime.startsWith("audio/")) return { name: "音频", modality: "audio" }
-  if (mime.startsWith("video/")) return { name: "视频", modality: "video" }
-  return null
+const MEDIA_TYPES: MediaType[] = [
+  {
+    modality: "image",
+    name: "图片",
+    question:
+      "请详细描述这张图片的内容。如果是代码截图，请完整提取代码并解释。如果是图表，请描述数据和趋势。如果是错误截图，请提取错误信息。",
+    mimePrefix: "image/",
+  },
+  {
+    modality: "audio",
+    name: "音频",
+    question: "请转录这段音频的内容。如果有多个说话人，请区分。",
+    mimePrefix: "audio/",
+  },
+  {
+    modality: "video",
+    name: "视频",
+    question: "请描述这个视频的主要内容，包括场景、动作和对话。",
+    mimePrefix: "video/",
+  },
+  {
+    modality: "pdf",
+    name: "PDF文档",
+    question: "请提取这个PDF文档的主要文本内容。",
+    mimeTypes: ["application/pdf"],
+  },
+]
+
+function getMediaType(mime: string): MediaType | null {
+  return (
+    MEDIA_TYPES.find(
+      (type) => type.mimeTypes?.includes(mime) || (type.mimePrefix && mime.startsWith(type.mimePrefix)),
+    ) ?? null
+  )
 }
 
 function fileToDataUrl(fileUrl: string, mime: string): string | null {
@@ -36,13 +63,6 @@ function fileToDataUrl(fileUrl: string, mime: string): string | null {
   } catch {
     return null
   }
-}
-
-const defaultQuestions: Record<string, string> = {
-  image: "请详细描述这张图片的内容。如果是代码截图，请完整提取代码并解释。如果是图表，请描述数据和趋势。如果是错误截图，请提取错误信息。",
-  audio: "请转录这段音频的内容。如果有多个说话人，请区分。",
-  video: "请描述这个视频的主要内容，包括场景、动作和对话。",
-  pdf: "请提取这个PDF文档的主要文本内容。",
 }
 
 export default tool({
@@ -61,7 +81,7 @@ export default tool({
     const mediaType = getMediaType(mime)
     if (!mediaType) return `不支持的文件类型: ${mime}`
 
-    const prompt = question || defaultQuestions[mediaType.modality] || `请描述这个${mediaType.name}的内容。`
+    const prompt = question || mediaType.question || `请描述这个${mediaType.name}的内容。`
     context.metadata({ title: `理解${mediaType.name}: ${filename || "未命名文件"}` })
 
     try {
