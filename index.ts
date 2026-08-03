@@ -23,19 +23,66 @@ function getMediaType(mime: string) {
   return null
 }
 
-function fileToDataUrl(fileUrl: string, mime: string): string | null {
-  try {
-    let filePath = fileUrl
-    if (filePath.startsWith("file://")) {
-      filePath = decodeURIComponent(new URL(filePath).pathname)
-    }
-    const resolved = resolve(filePath)
-    if (!existsSync(resolved)) return null
-    const buffer = readFileSync(resolved)
-    return `data:${mime};base64,${buffer.toString("base64")}`
-  } catch {
-    return null
+const DEFAULT_REQUEST_TIMEOUT_MS = 120_000
+
+function resolveTimeoutMs(): number {
+  const raw = process.env.MIMOCODE_REQUEST_TIMEOUT_MS
+  if (!raw) return DEFAULT_REQUEST_TIMEOUT_MS
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`MIMOCODE_REQUEST_TIMEOUT_MS 必须是正整数，当前值: ${raw}`)
   }
+  return parsed
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = error.cause
+    const causeText = cause ? ` (原因: ${describeError(cause)})` : ""
+    return `${error.name}: ${error.message}${causeText}`
+  }
+  if (typeof error === "string") return error
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
+}
+
+function fileToDataUrl(fileUrl: string, mime: string): string {
+  let filePath = fileUrl
+  if (filePath.startsWith("file://")) {
+    try {
+      filePath = decodeURIComponent(new URL(filePath).pathname)
+    } catch (error) {
+      throw new Error(`无效的 file:// URL: ${fileUrl}`, { cause: error })
+    }
+  }
+  const resolved = resolve(filePath)
+  if (!existsSync(resolved)) {
+    throw new Error(`文件不存在: ${resolved}`)
+  }
+  let buffer: Buffer
+  try {
+    buffer = readFileSync(resolved)
+  } catch (error) {
+    throw new Error(`读取文件失败: ${resolved}`, { cause: error })
+  }
+  return `data:${mime};base64,${buffer.toString("base64")}`
+}
+
+type PromptPart = { type?: unknown; text?: unknown }
+
+function extractDescription(data: unknown): string {
+  if (typeof data === "string") return data.trim()
+  if (data && typeof data === "object" && Array.isArray((data as { parts?: unknown }).parts)) {
+    return ((data as { parts: PromptPart[] }).parts)
+      .filter((part) => part?.type === "text" && typeof part.text === "string")
+      .map((part) => part.text as string)
+      .join("\n")
+      .trim()
+  }
+  return ""
 }
 
 const defaultQuestions: Record<string, string> = {
@@ -59,28 +106,28 @@ export default tool({
     const { url, mime, filename, question } = args
 
     const mediaType = getMediaType(mime)
-    if (!mediaType) return `不支持的文件类型: ${mime}`
+    if (!mediaType) throw new Error(`不支持的文件类型: ${mime}`)
+
+    const timeoutMs = resolveTimeoutMs()
 
     const prompt = question || defaultQuestions[mediaType.modality] || `请描述这个${mediaType.name}的内容。`
     context.metadata({ title: `理解${mediaType.name}: ${filename || "未命名文件"}` })
 
+    let fileUrl = url
+
+    if (!url.startsWith("data:") && !url.startsWith("http")) {
+      fileUrl = fileToDataUrl(url, mime)
+    }
+
+    const serverUrl = process.env.MIMOCODE_SERVER_URL || "http://localhost:3000"
+    const endpoint = `${serverUrl}/session/${context.sessionID}/prompt`
+
+    let response: Response
     try {
-      let fileUrl = url
-
-      if (!url.startsWith("data:") && !url.startsWith("http")) {
-        const dataUrl = fileToDataUrl(url, mime)
-        if (dataUrl) {
-          fileUrl = dataUrl
-        } else {
-          return `无法读取文件: ${url}`
-        }
-      }
-
-      const serverUrl = process.env.MIMOCODE_SERVER_URL || "http://localhost:3000"
-
-      const response = await fetch(`${serverUrl}/session/${context.sessionID}/prompt`, {
+      response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(timeoutMs),
         body: JSON.stringify({
           parts: [
             { type: "file", mime, url: fileUrl, filename },
@@ -91,29 +138,41 @@ export default tool({
           noReply: true,
         }),
       })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        return `API 调用失败 (${response.status}): ${errorText}`
-      }
-
-      const data = await response.json()
-      let description = ""
-
-      if (data?.parts) {
-        description = data.parts
-          .filter((p: any) => p.type === "text")
-          .map((p: any) => p.text)
-          .join("\n")
-      } else if (typeof data === "string") {
-        description = data
-      } else {
-        description = JSON.stringify(data)
-      }
-
-      return description || "无法理解该内容"
     } catch (error) {
-      return `处理${mediaType.name}时出错: ${error}`
+      if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+        throw new Error(`请求 ${endpoint} 超时 (${timeoutMs}ms)`, { cause: error })
+      }
+      throw new Error(`无法连接到 MiMo Code 服务 ${endpoint}`, { cause: error })
     }
+
+    if (!response.ok) {
+      let errorText: string
+      try {
+        errorText = await response.text()
+      } catch (error) {
+        errorText = `<无法读取响应内容: ${describeError(error)}>`
+      }
+      throw new Error(`API 调用失败 (${response.status} ${response.statusText}): ${errorText}`)
+    }
+
+    let rawBody: string
+    try {
+      rawBody = await response.text()
+    } catch (error) {
+      throw new Error(`读取 ${endpoint} 的响应内容失败`, { cause: error })
+    }
+
+    let data: unknown
+    try {
+      data = JSON.parse(rawBody)
+    } catch (error) {
+      throw new Error(`API 返回了非 JSON 响应: ${rawBody.slice(0, 500)}`, { cause: error })
+    }
+
+    const description = extractDescription(data)
+    if (!description) {
+      throw new Error(`API 响应中没有可用的文本内容: ${rawBody.slice(0, 500)}`)
+    }
+    return description
   },
 })

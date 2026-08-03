@@ -1,6 +1,8 @@
 # MiMo-Multimodal-Bridge PowerShell 安装脚本
 # 用法: irm https://raw.githubusercontent.com/will00768-max/MiMo-Multimodal-Bridge/main/install.ps1 | iex
 
+$ErrorActionPreference = "Stop"
+
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "  MiMo-Multimodal-Bridge 安装" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
@@ -37,7 +39,12 @@ Write-Host ""
 # 创建插件目录
 Write-Host "创建插件目录..." -ForegroundColor Green
 if (!(Test-Path $pluginDir)) {
-    New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null
+    try {
+        New-Item -ItemType Directory -Path $pluginDir -Force -ErrorAction Stop | Out-Null
+    } catch {
+        Write-Host "  ✗ 无法创建插件目录 ${pluginDir}: $_" -ForegroundColor Red
+        exit 1
+    }
 }
 
 # 下载插件文件
@@ -52,25 +59,30 @@ try {
     exit 1
 }
 
+# plugin.json 是可选的，仓库中不一定存在
 try {
     Invoke-WebRequest -Uri "$baseUrl/plugin.json" -OutFile "$pluginDir\plugin.json" -ErrorAction Stop
     Write-Host "  ✓ plugin.json" -ForegroundColor Green
 } catch {
-    Write-Host "  ✗ 下载 plugin.json 失败: $_" -ForegroundColor Red
-    exit 1
+    Write-Host "  ! 跳过 plugin.json（未能下载: $_）" -ForegroundColor Yellow
 }
 
 # 检查配置文件
 $configFile = "$configDir\$configFileName"
 if (!(Test-Path $configFile)) {
     Write-Host "创建配置文件..." -ForegroundColor Green
-    $configDir2 = Split-Path $configFile -Parent
-    if (!(Test-Path $configDir2)) {
-        New-Item -ItemType Directory -Path $configDir2 -Force | Out-Null
+    try {
+        $configDir2 = Split-Path $configFile -Parent
+        if (!(Test-Path $configDir2)) {
+            New-Item -ItemType Directory -Path $configDir2 -Force -ErrorAction Stop | Out-Null
+        }
+        @{
+            plugin = @("$pluginDir\index.ts")
+        } | ConvertTo-Json | Out-File $configFile -Encoding UTF8 -ErrorAction Stop
+    } catch {
+        Write-Host "  ✗ 无法写入配置文件 ${configFile}: $_" -ForegroundColor Red
+        exit 1
     }
-    @{
-        plugin = @("$pluginDir\index.ts")
-    } | ConvertTo-Json | Out-File $configFile -Encoding UTF8
     Write-Host "  ✓ 配置文件已创建: $configFile" -ForegroundColor Green
 } else {
     Write-Host ""

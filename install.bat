@@ -17,12 +17,38 @@ echo.
 
 REM 创建插件目录
 echo 创建插件目录...
-if not exist "%PLUGIN_DIR%" mkdir "%PLUGIN_DIR%"
+if not exist "%PLUGIN_DIR%" (
+    mkdir "%PLUGIN_DIR%"
+    if errorlevel 1 (
+        echo 错误: 无法创建插件目录 %PLUGIN_DIR% 1>&2
+        pause
+        exit /b 1
+    )
+)
 
 REM 复制插件文件
 echo 复制插件文件...
+if not exist "%SOURCE_DIR%index.ts" (
+    echo 错误: 找不到 %SOURCE_DIR%index.ts 1>&2
+    pause
+    exit /b 1
+)
 copy /Y "%SOURCE_DIR%index.ts" "%PLUGIN_DIR%\" >nul
-copy /Y "%SOURCE_DIR%plugin.json" "%PLUGIN_DIR%\" >nul
+if errorlevel 1 (
+    echo 错误: 复制 index.ts 到 %PLUGIN_DIR% 失败 1>&2
+    pause
+    exit /b 1
+)
+if exist "%SOURCE_DIR%plugin.json" (
+    copy /Y "%SOURCE_DIR%plugin.json" "%PLUGIN_DIR%\" >nul
+    if errorlevel 1 (
+        echo 错误: 复制 plugin.json 到 %PLUGIN_DIR% 失败 1>&2
+        pause
+        exit /b 1
+    )
+) else (
+    echo 警告: 未找到 plugin.json，已跳过
+)
 
 REM 检查配置文件
 set "CONFIG_FILE=%CONFIG_DIR%\mimocode.json"
@@ -35,6 +61,11 @@ if not exist "%CONFIG_FILE%" (
         echo   ]
         echo }
     ) > "%CONFIG_FILE%"
+    if errorlevel 1 (
+        echo 错误: 无法写入配置文件 %CONFIG_FILE% 1>&2
+        pause
+        exit /b 1
+    )
     echo 配置文件已创建: %CONFIG_FILE%
 ) else (
     echo.
