@@ -1,9 +1,17 @@
 #!/bin/bash
 # MiMo-Multimodal-Bridge 安装脚本
 
-set -e
+set -euo pipefail
 
 REPO_URL="https://github.com/will00768-max/MiMo-Multimodal-Bridge"
+TMPDIR_INSTALL=""
+
+cleanup() {
+    if [ -n "$TMPDIR_INSTALL" ] && [ -d "$TMPDIR_INSTALL" ]; then
+        rm -rf "$TMPDIR_INSTALL"
+    fi
+}
+trap cleanup EXIT
 
 echo "=========================================="
 echo "  MiMo-Multimodal-Bridge 安装"
@@ -16,15 +24,21 @@ if [ ! -f "$SOURCE_DIR/index.ts" ]; then
     echo "正在下载插件文件..."
     TMPDIR_INSTALL="$(mktemp -d)"
     if command -v git &>/dev/null; then
-        git clone --depth 1 "$REPO_URL" "$TMPDIR_INSTALL/repo" 2>/dev/null
+        if ! git clone --depth 1 "$REPO_URL" "$TMPDIR_INSTALL/repo"; then
+            echo "错误: git clone $REPO_URL 失败（错误详情见上方输出）" >&2
+            exit 1
+        fi
         SOURCE_DIR="$TMPDIR_INSTALL/repo"
     else
-        curl -fsSL "$REPO_URL/archive/refs/heads/main.tar.gz" | tar xz -C "$TMPDIR_INSTALL"
+        if ! curl -fsSL "$REPO_URL/archive/refs/heads/main.tar.gz" | tar xz -C "$TMPDIR_INSTALL"; then
+            echo "错误: 下载或解包 main.tar.gz 失败" >&2
+            exit 1
+        fi
         SOURCE_DIR="$TMPDIR_INSTALL/MiMo-Multimodal-Bridge-main"
     fi
     if [ ! -f "$SOURCE_DIR/index.ts" ]; then
-        echo "错误: 无法下载插件文件，请手动克隆仓库:"
-        echo "  git clone $REPO_URL"
+        echo "错误: 下载的内容中没有 index.ts，请手动克隆仓库:" >&2
+        echo "  git clone $REPO_URL" >&2
         exit 1
     fi
 fi
@@ -40,11 +54,17 @@ echo ""
 
 # 创建工具目录
 echo "创建工具目录..."
-mkdir -p "$TOOLS_DIR"
+if ! mkdir -p "$TOOLS_DIR"; then
+    echo "错误: 无法创建工具目录 $TOOLS_DIR" >&2
+    exit 1
+fi
 
 # 复制工具文件
 echo "复制工具文件..."
-cp "$SOURCE_DIR/index.ts" "$TOOLS_DIR/understand_media.ts"
+if ! cp "$SOURCE_DIR/index.ts" "$TOOLS_DIR/understand_media.ts"; then
+    echo "错误: 无法将 index.ts 复制到 $TOOLS_DIR/understand_media.ts" >&2
+    exit 1
+fi
 
 echo ""
 echo "=========================================="
@@ -60,8 +80,3 @@ echo "  3. 工具会调用 mimo-v2.5 来理解内容"
 echo ""
 echo "更多信息请参考:"
 echo "  $REPO_URL"
-
-# 清理临时目录
-if [ -n "$TMPDIR_INSTALL" ] && [ -d "$TMPDIR_INSTALL" ]; then
-    rm -rf "$TMPDIR_INSTALL"
-fi
